@@ -1,15 +1,74 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>YouTube Downloader</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Video Downloader</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: white;
+            padding: 40px;
+        }
+
+        .container {
+            width: 450px;
+            background: #1c1c1c;
+            margin: auto;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px #444;
+        }
+
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: none;
+        }
+
+        button {
+            background: #ff4747;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #ff2c2c;
+        }
+
+        .title {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 22px;
+        }
+    </style>
 </head>
+
 <body>
-    <h1>YouTube Video Downloader</h1>
+    <div class="container">
+        <div class="title">YouTube Video Downloader</div>
 
-    <form method="POST">
-        <input type="text" name="url" placeholder="Paste YouTube URL" required>
-        <button type="submit">Download</button>
-    </form>
+        <form action="/download" method="POST">
 
+            <label>Enter YouTube URL:</label>
+            <input type="text" name="url" placeholder="https://youtube.com/..." required>
+
+            <label>Select Resolution:</label>
+            <select name="resolution" required>
+                <option value="360p">360p</option>
+                <option value="480p">480p</option>
+                <option value="720p">720p</option>
+                <option value="1080p">1080p</option>
+            </select>
+
+            <button type="submit">Download</button>
+
+        </form>
+    </div>
 </body>
 </html>
