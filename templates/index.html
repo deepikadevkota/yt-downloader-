@@ -2,48 +2,14 @@
 <html>
 <head>
     <title>YouTube Downloader</title>
-    <style>
-        body {
-            font-family: Arial;
-            text-align: center;
-            margin-top: 50px;
-        }
-        .box {
-            width: 400px;
-            margin: auto;
-            padding: 20px;
-            border: 1px solid #aaa;
-            border-radius: 10px;
-        }
-        button {
-            padding: 10px 20px;
-            background: green;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        input, select {
-            padding: 8px;
-            width: 90%;
-            margin-top: 10px;
-        }
-    </style>
 </head>
 <body>
-    <h2>YouTube Downloader</h2>
+    <h1>YouTube Video Downloader</h1>
 
-    <div class="box">
-        <form method="POST" action="/download">
-            <input type="text" name="url" placeholder="Enter YouTube URL" required>
+    <form method="POST">
+        <input type="text" name="url" placeholder="Paste YouTube URL" required>
+        <button type="submit">Download</button>
+    </form>
 
-            <select name="resolution">
-                <option value="360p">360p</option>
-                <option value="720p">720p</option>
-                <option value="1080p">1080p</option>
-            </select>
-
-            <button type="submit">Download</button>
-        </form>
-    </div>
 </body>
 </html>
