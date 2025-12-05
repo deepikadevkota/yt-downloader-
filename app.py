@@ -2,51 +2,42 @@ from flask import Flask, render_template, request
 from pytubefix import YouTube
 import os
 import re
-import subprocess
 
 app = Flask(__name__)
 
 DOWNLOAD_FOLDER = "downloads"
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
-@app.route("/")
+@app.route("/", methods=["GET", "POST"])
 def index():
+    if request.method == "POST":
+        url = request.form["url"]
+        resolution = request.form["resolution"]
+
+        try:
+            yt = YouTube(url)
+
+            # Safe filename
+            safe_title = re.sub(r'[<>:"/\\|?*]', "", yt.title)[:150]
+
+            # Try progressive (video+audio combined)
+            stream = yt.streams.filter(resolution=resolution, progressive=True).first()
+
+            if not stream:
+                return render_template("index.html",
+                                       error="Selected resolution not available!")
+
+            file_path = stream.download(DOWNLOAD_FOLDER, filename=f"{safe_title}.mp4")
+
+            return render_template("index.html",
+                                   success=f"Download completed! Saved as: {file_path}",
+                                   title=yt.title)
+
+        except Exception as e:
+            return render_template("index.html",
+                                   error=f"Error: {str(e)}")
+
     return render_template("index.html")
 
-@app.route("/download", methods=["POST"])
-def download_video():
-    url = request.form["url"]
-    resolution = request.form["resolution"]
-
-    try:
-        yt = YouTube(url)
-
-        safe_title = re.sub(r'[<>:"/\\|?*]', '', yt.title)[:150]
-
-        stream = yt.streams.filter(resolution=resolution, progressive=True).first()
-
-        if stream:
-            filepath = stream.download(DOWNLOAD_FOLDER, filename=f"{safe_title}.mp4")
-            return f"Download Complete! Saved as: {filepath}"
-
-        video_stream = yt.streams.filter(resolution=resolution, adaptive=True).first()
-        audio_stream = yt.streams.filter(adaptive=True, only_audio=True).first()
-
-        video_path = video_stream.download(DOWNLOAD_FOLDER, "temp_video.mp4")
-        audio_path = audio_stream.download(DOWNLOAD_FOLDER, "temp_audio.mp3")
-
-        final_output = os.path.join(DOWNLOAD_FOLDER, f"{safe_title}.mp4")
-
-        cmd = f'ffmpeg -i "{video_path}" -i "{audio_path}" -c:v copy -c:a aac "{final_output}" -y'
-        subprocess.call(cmd, shell=True)
-
-        os.remove(video_path)
-        os.remove(audio_path)
-
-        return f"Download Complete! Saved as: {final_output}"
-
-    except Exception as e:
-        return f"Error: {str(e)}"
-
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
