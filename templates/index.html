@@ -2,72 +2,89 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Video Downloader</title>
-
     <style>
         body {
             font-family: Arial, sans-serif;
-            background: #111;
-            color: white;
-            padding: 40px;
+            background: #f2f2f2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
         }
-
         .container {
             width: 450px;
-            background: #1c1c1c;
-            margin: auto;
-            padding: 25px;
+            background: white;
+            padding: 30px;
             border-radius: 10px;
-            box-shadow: 0 0 10px #444;
-        }
-
-        input, select, button {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 5px;
-            border: none;
-        }
-
-        button {
-            background: #ff4747;
-            color: white;
-            font-size: 16px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background: #ff2c2c;
-        }
-
-        .title {
+            box-shadow: 0px 0px 10px gray;
             text-align: center;
+        }
+        h2 {
             margin-bottom: 20px;
-            font-size: 22px;
+        }
+        input, select {
+            width: 90%;
+            padding: 10px;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            border: 1px solid gray;
+            font-size: 15px;
+        }
+        .btn {
+            background: green;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 18px;
+        }
+        .btn:hover {
+            background: darkgreen;
+        }
+        .progress-bar {
+            width: 90%;
+            height: 20px;
+            background: #ddd;
+            border-radius: 5px;
+            margin: 10px auto;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: green;
+            border-radius: 5px;
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <div class="title">YouTube Video Downloader</div>
+        <h2>YouTube Video Downloader</h2>
 
         <form action="/download" method="POST">
+            <label><b>Enter YouTube Video URL:</b></label><br>
+            <input type="text" name="url" placeholder="Paste URL here" required>
 
-            <label>Enter YouTube URL:</label>
-            <input type="text" name="url" placeholder="https://youtube.com/..." required>
-
-            <label>Select Resolution:</label>
-            <select name="resolution" required>
-                <option value="360p">360p</option>
-                <option value="480p">480p</option>
-                <option value="720p">720p</option>
+            <label><b>Select Resolution:</b></label><br>
+            <select name="resolution">
                 <option value="1080p">1080p</option>
+                <option value="720p">720p</option>
+                <option value="480p">480p</option>
+                <option value="360p">360p</option>
+                <option value="240p">240p</option>
+                <option value="144p">144p</option>
             </select>
 
-            <button type="submit">Download</button>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <p id="progressText">0%</p>
 
+            <button class="btn" type="submit">Download Video</button>
         </form>
     </div>
 </body>
