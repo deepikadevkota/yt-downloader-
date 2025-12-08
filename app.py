@@ -1,4 +1,4 @@
-from flask import Flask, request, send_file, jsonify
+from flask import Flask, request, send_file, jsonify, render_template
 from yt_dlp import YoutubeDL
 import os
 import uuid
@@ -7,8 +7,8 @@ app = Flask(__name__)
 
 progress_data = {"percentage": 0}
 
-# Always show these resolutions even if YouTube provides fewer
 MIN_RESOLUTIONS = ["144p", "240p", "360p", "480p", "720p", "1080p"]
+
 
 def progress_hook(d):
     if d['status'] == 'downloading':
@@ -20,6 +20,11 @@ def progress_hook(d):
 
     elif d['status'] == 'finished':
         progress_data['percentage'] = 100
+
+
+@app.route("/")
+def index():
+    return render_template("index.html")
 
 
 @app.route("/video_info", methods=["POST"])
@@ -41,7 +46,6 @@ def video_info():
             if f.get("height"):
                 available.append(str(f["height"]) + "p")
 
-        # Merge YouTube resolutions with min list
         final = sorted(set(available + MIN_RESOLUTIONS), key=lambda x: int(x.replace("p", "")))
 
         return jsonify({"resolutions": final})
@@ -85,10 +89,5 @@ def progress():
     return jsonify(progress_data)
 
 
-@app.route("/")
-def home():
-    return "Backend Running Successfully!"
-
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+    app.run(debug=True, port=8000)
