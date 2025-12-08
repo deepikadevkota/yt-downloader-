@@ -7,6 +7,7 @@ app = Flask(__name__)
 
 progress_data = {"percentage": 0}
 
+# Always show these resolutions even if YouTube provides fewer
 MIN_RESOLUTIONS = ["144p", "240p", "360p", "480p", "720p", "1080p"]
 
 def progress_hook(d):
@@ -16,24 +17,25 @@ def progress_hook(d):
             progress_data['percentage'] = float(percent)
         except:
             pass
+
     elif d['status'] == 'finished':
         progress_data['percentage'] = 100
 
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+    return render_template("index.html")   # <-- FIXED
 
 
 @app.route("/video_info", methods=["POST"])
 def video_info():
     url = request.form.get("url", "")
+
     if not url:
         return jsonify({"error": "URL missing"})
 
-    ydl_opts = {"quiet": True, "skip_download": True}
-
     try:
+        ydl_opts = {"quiet": True, "skip_download": True}
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
 
@@ -55,8 +57,10 @@ def download():
     url = request.form.get("url")
     resolution = request.form.get("resolution")
 
-    progress_data["percentage"] = 0
+    if not url or not resolution:
+        return jsonify({"error": "Missing parameters"})
 
+    progress_data["percentage"] = 0
     output_file = f"video_{uuid.uuid4().hex}.mp4"
 
     ydl_opts = {
