@@ -25,30 +25,33 @@
     }
 
     .container {
-        width: 420px;
-        margin: 60px auto;
+        width: 520px;        /* Bigger Box */
+        margin: 50px auto;
         background: var(--box);
-        padding: 25px;
-        border-radius: 10px;
+        padding: 35px;       /* More padding */
+        border-radius: 18px;
         text-align: center;
+        box-shadow: 0px 0px 12px #0002;
     }
 
     input, select {
-        width: 90%;
-        padding: 10px;
-        margin-top: 12px;
-        border-radius: 6px;
+        width: 95%;
+        padding: 12px;
+        margin-top: 16px;
+        border-radius: 8px;
         border: 1px solid gray;
+        font-size: 15px;
     }
 
     button {
-        padding: 10px 20px;
+        padding: 12px 25px;
         background: green;
         color: white;
         border: none;
-        border-radius: 8px;
-        margin-top: 20px;
+        border-radius: 10px;
+        margin-top: 25px;
         cursor: pointer;
+        font-size: 16px;
     }
 
     .theme-btn {
@@ -58,12 +61,12 @@
     }
 
     .progress {
-        width: 90%;
+        width: 95%;
         background: #ccc;
-        height: 20px;
+        height: 25px;
         border-radius: 6px;
         overflow: hidden;
-        margin: 15px auto;
+        margin: 20px auto;
     }
 
     .progress-fill {
@@ -71,6 +74,11 @@
         width: 0%;
         background: green;
         transition: width 0.2s;
+    }
+
+    #percent {
+        font-size: 18px;
+        margin-top: 10px;
     }
 </style>
 
@@ -104,21 +112,22 @@ document.getElementById("themeBtn").onclick = () => {
     document.body.classList.toggle("dark");
 };
 
-// Auto load resolutions when URL changes
+// Load resolutions when URL is entered
 document.getElementById("url").addEventListener("input", () => {
     let url = document.getElementById("url").value;
+    if (!url.trim()) return;
 
     fetch("/video_info", {
         method: "POST",
         headers: {"Content-Type": "application/x-www-form-urlencoded"},
-        body: "url=" + url
+        body: "url=" + encodeURIComponent(url)
     })
     .then(res => res.json())
     .then(data => {
         let r = document.getElementById("resolution");
         r.innerHTML = "";
 
-        if (data.resolutions) {
+        if (data.resolutions && data.resolutions.length > 0) {
             data.resolutions.forEach(res => {
                 let opt = document.createElement("option");
                 opt.value = res;
@@ -126,8 +135,11 @@ document.getElementById("url").addEventListener("input", () => {
                 r.appendChild(opt);
             });
         } else {
-            r.innerHTML = "<option>Error</option>";
+            r.innerHTML = "<option>No Resolutions Found</option>";
         }
+    })
+    .catch(() => {
+        document.getElementById("resolution").innerHTML = "<option>Error</option>";
     });
 });
 
@@ -137,29 +149,46 @@ function updateProgress() {
     fetch("/progress")
         .then(res => res.json())
         .then(data => {
-            document.getElementById("percent").innerText = data.percentage + "%";
-            document.getElementById("progressFill").style.width = data.percentage + "%";
+            let percent = data.percentage || 0;
+            document.getElementById("percent").innerText = percent + "%";
+            document.getElementById("progressFill").style.width = percent + "%";
         });
 }
+
+let intervalID;
 
 // Start Download
 function startDownload() {
     let url = document.getElementById("url").value;
     let res = document.getElementById("resolution").value;
 
+    if (!url || !res || res === "Select Resolution") {
+        alert("Please paste URL and select resolution!");
+        return;
+    }
+
     let form = new FormData();
     form.append("url", url);
     form.append("resolution", res);
 
-    setInterval(updateProgress, 500);
+    intervalID = setInterval(updateProgress, 400);
 
     fetch("/download", { method: "POST", body: form })
         .then(res => res.blob())
         .then(file => {
+            clearInterval(intervalID);
+
             let a = document.createElement("a");
             a.href = window.URL.createObjectURL(file);
             a.download = "video.mp4";
             a.click();
+
+            document.getElementById("percent").innerText = "0%";
+            document.getElementById("progressFill").style.width = "0%";
+        })
+        .catch(() => {
+            clearInterval(intervalID);
+            alert("Download Failed!");
         });
 }
 
