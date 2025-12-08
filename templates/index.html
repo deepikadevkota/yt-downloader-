@@ -82,7 +82,6 @@
     <script>
         const backend = "http://127.0.0.1:8000";
 
-        // Fixed resolutions (Always show)
         const MIN_RESOLUTIONS = ["144p", "240p", "360p", "480p", "720p", "1080p"];
 
         document.getElementById("url").addEventListener("input", loadInfo);
@@ -105,7 +104,6 @@
                     let sel = document.getElementById("resolution");
                     sel.innerHTML = "";
 
-                    // Merge backend + fixed resolutions
                     let finalRes = Array.from(new Set([...MIN_RESOLUTIONS, ...data.resolutions]))
                         .sort((a, b) => parseInt(a) - parseInt(b));
 
