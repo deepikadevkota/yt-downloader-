@@ -33,7 +33,7 @@
         text-align: center;
     }
 
-    input {
+    input, select {
         width: 90%;
         padding: 10px;
         margin-top: 12px;
@@ -41,7 +41,7 @@
         border: 1px solid gray;
     }
 
-    .btn {
+    button {
         padding: 10px 20px;
         background: green;
         color: white;
@@ -53,11 +53,6 @@
 
     .theme-btn {
         background: purple;
-        color: white;
-        padding: 8px 16px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
         float: right;
         margin: 10px;
     }
@@ -79,34 +74,10 @@
     }
 </style>
 
-<script>
-function toggleTheme() {
-    document.body.classList.toggle("dark");
-}
-
-function startProgress() {
-    let bar = document.getElementById("bar");
-    let text = document.getElementById("percent");
-
-    let interval = setInterval(() => {
-        fetch("/progress")
-            .then(res => res.json())
-            .then(data => {
-                bar.style.width = data.percentage + "%";
-                text.innerText = data.percentage + "%";
-
-                if (data.percentage >= 100) {
-                    clearInterval(interval);
-                }
-            });
-    }, 500);
-}
-</script>
-
 </head>
 <body>
 
-<button class="theme-btn" onclick="toggleTheme()">Theme</button>
+<button id="themeBtn" class="theme-btn">Theme</button>
 
 <div class="container">
     <h2>YouTube Video Downloader</h2>
@@ -114,73 +85,84 @@ function startProgress() {
     <input id="url" type="text" placeholder="Paste YouTube URL">
 
     <select id="resolution">
-        <option>Loading...</option>
+        <option>Select Resolution</option>
     </select>
 
-    <div id="progressBar"><div id="progressFill"></div></div>
+    <div class="progress">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+
     <p id="percent">0%</p>
 
     <button onclick="startDownload()">Download</button>
 </div>
 
 <script>
-    document.getElementById("themeBtn").onclick = () => {
-        document.body.classList.toggle("dark");
-    };
 
-    document.getElementById("url").addEventListener("change", () => {
-        let url = document.getElementById("url").value;
-        fetch("/video_info", {
-            method: "POST",
-            headers: {"Content-Type": "application/x-www-form-urlencoded"},
-            body: "url=" + url
-        })
+// Theme Toggle
+document.getElementById("themeBtn").onclick = () => {
+    document.body.classList.toggle("dark");
+};
+
+// Auto load resolutions when URL changes
+document.getElementById("url").addEventListener("input", () => {
+    let url = document.getElementById("url").value;
+
+    fetch("/video_info", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: "url=" + url
+    })
+    .then(res => res.json())
+    .then(data => {
+        let r = document.getElementById("resolution");
+        r.innerHTML = "";
+
+        if (data.resolutions) {
+            data.resolutions.forEach(res => {
+                let opt = document.createElement("option");
+                opt.value = res;
+                opt.innerHTML = res;
+                r.appendChild(opt);
+            });
+        } else {
+            r.innerHTML = "<option>Error</option>";
+        }
+    });
+});
+
+
+// Update Progress
+function updateProgress() {
+    fetch("/progress")
         .then(res => res.json())
         .then(data => {
-            let r = document.getElementById("resolution");
-            r.innerHTML = "";
-
-            if (data.resolutions) {
-                data.resolutions.forEach(res => {
-                    let opt = document.createElement("option");
-                    opt.value = res;
-                    opt.innerHTML = res;
-                    r.appendChild(opt);
-                });
-            } else {
-                r.innerHTML = "<option>Error</option>";
-            }
+            document.getElementById("percent").innerText = data.percentage + "%";
+            document.getElementById("progressFill").style.width = data.percentage + "%";
         });
-    });
+}
 
-    function updateProgress() {
-        fetch("/progress")
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById("percent").innerText = data.percentage + "%";
-                document.getElementById("progressFill").style.width = data.percentage + "%";
-            });
-    }
+// Start Download
+function startDownload() {
+    let url = document.getElementById("url").value;
+    let res = document.getElementById("resolution").value;
 
-    function startDownload() {
-        let url = document.getElementById("url").value;
-        let res = document.getElementById("resolution").value;
+    let form = new FormData();
+    form.append("url", url);
+    form.append("resolution", res);
 
-        let form = new FormData();
-        form.append("url", url);
-        form.append("resolution", res);
+    setInterval(updateProgress, 500);
 
-        setInterval(updateProgress, 500);
+    fetch("/download", { method: "POST", body: form })
+        .then(res => res.blob())
+        .then(file => {
+            let a = document.createElement("a");
+            a.href = window.URL.createObjectURL(file);
+            a.download = "video.mp4";
+            a.click();
+        });
+}
 
-        fetch("/download", { method: "POST", body: form })
-            .then(res => res.blob())
-            .then(file => {
-                let a = document.createElement("a");
-                a.href = window.URL.createObjectURL(file);
-                a.download = "video.mp4";
-                a.click();
-            });
-    }
 </script>
 
 </body>
