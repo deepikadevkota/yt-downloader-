@@ -1,43 +1,68 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_file, jsonify
 from pytubefix import YouTube
 import os
-import re
 
 app = Flask(__name__)
 
 DOWNLOAD_FOLDER = "downloads"
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
-@app.route("/", methods=["GET", "POST"])
+progress = {"percentage": 0}
+
+
+def progress_function(stream, chunk, bytes_remaining):
+    total_size = stream.filesize
+    downloaded = total_size - bytes_remaining
+    percent = int((downloaded / total_size) * 100)
+    progress["percentage"] = percent
+
+
+@app.route("/")
 def index():
-    if request.method == "POST":
-        url = request.form["url"]
-        resolution = request.form["resolution"]
-
-        try:
-            yt = YouTube(url)
-
-            # Safe filename
-            safe_title = re.sub(r'[<>:"/\\|?*]', "", yt.title)[:150]
-
-            # Try progressive (video+audio combined)
-            stream = yt.streams.filter(resolution=resolution, progressive=True).first()
-
-            if not stream:
-                return render_template("index.html",
-                                       error="Selected resolution not available!")
-
-            file_path = stream.download(DOWNLOAD_FOLDER, filename=f"{safe_title}.mp4")
-
-            return render_template("index.html",
-                                   success=f"Download completed! Saved as: {file_path}",
-                                   title=yt.title)
-
-        except Exception as e:
-            return render_template("index.html",
-                                   error=f"Error: {str(e)}")
-
     return render_template("index.html")
 
+
+@app.route("/video_info", methods=["POST"])
+def video_info():
+    url = request.form.get("url")
+    try:
+        yt = YouTube(url)
+        streams = yt.streams.filter(progressive=True, file_extension="mp4").order_by("resolution").desc()
+
+        resolutions = [stream.resolution for stream in streams if stream.resolution]
+
+        return jsonify({"resolutions": resolutions})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+
+@app.route("/download", methods=["POST"])
+def download_video():
+    url = request.form.get("url")
+    resolution = request.form.get("resolution")
+
+    try:
+        progress["percentage"] = 0
+
+        yt = YouTube(url, on_progress_callback=progress_function)
+        stream = yt.streams.filter(res=resolution, progressive=True).first()
+
+        if not stream:
+            return "Resolution not available!"
+
+        file_path = stream.download(output_path=DOWNLOAD_FOLDER)
+
+        progress["percentage"] = 100
+        return send_file(file_path, as_attachment=True)
+
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+
+@app.route("/progress")
+def get_progress():
+    return jsonify(progress)
+
+
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True, port=8000)
