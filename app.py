@@ -41,7 +41,7 @@ def video_info():
             if f.get("height"):
                 available.append(str(f["height"]) + "p")
 
-        # Merge YouTube resolutions with minimum required ones
+        # Merge YouTube resolutions with min list
         final = sorted(set(available + MIN_RESOLUTIONS), key=lambda x: int(x.replace("p", "")))
 
         return jsonify({"resolutions": final})
@@ -58,10 +58,8 @@ def download():
     if not url or not resolution:
         return jsonify({"error": "Missing parameters"})
 
-    # Reset progress every download
     progress_data["percentage"] = 0
 
-    # Unique temp file
     output_file = f"video_{uuid.uuid4().hex}.mp4"
 
     ydl_opts = {
@@ -81,14 +79,6 @@ def download():
     except Exception as e:
         return jsonify({"error": str(e)})
 
-    finally:
-        # Clean old files automatically (optional)
-        try:
-            if os.path.exists(output_file):
-                pass
-        except:
-            pass
-
 
 @app.route("/progress")
 def progress():
@@ -101,5 +91,4 @@ def home():
 
 
 if __name__ == "__main__":
-    # Change port if needed (must match frontend)
     app.run(host="0.0.0.0", port=8000)
