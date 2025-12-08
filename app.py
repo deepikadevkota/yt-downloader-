@@ -9,7 +9,6 @@ progress_data = {"percentage": 0}
 
 MIN_RESOLUTIONS = ["144p", "240p", "360p", "480p", "720p", "1080p"]
 
-
 def progress_hook(d):
     if d['status'] == 'downloading':
         try:
@@ -23,8 +22,8 @@ def progress_hook(d):
 
 
 @app.route("/")
-def index():
-    return render_template("index.html")
+def home():
+    return render_template("index.html")   # <-- FIXED (Loads frontend)
 
 
 @app.route("/video_info", methods=["POST"])
@@ -90,4 +89,4 @@ def progress():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=8000)
+    app.run(host="0.0.0.0", port=8000)
