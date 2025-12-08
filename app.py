@@ -16,20 +16,18 @@ def progress_hook(d):
             progress_data['percentage'] = float(percent)
         except:
             pass
-
     elif d['status'] == 'finished':
         progress_data['percentage'] = 100
 
 
 @app.route("/")
 def home():
-    return render_template("index.html")   # <-- FIXED (Loads frontend)
+    return render_template("index.html")
 
 
 @app.route("/video_info", methods=["POST"])
 def video_info():
     url = request.form.get("url", "")
-
     if not url:
         return jsonify({"error": "URL missing"})
 
@@ -40,7 +38,6 @@ def video_info():
             info = ydl.extract_info(url, download=False)
 
         available = []
-
         for f in info.get("formats", []):
             if f.get("height"):
                 available.append(str(f["height"]) + "p")
@@ -57,9 +54,6 @@ def video_info():
 def download():
     url = request.form.get("url")
     resolution = request.form.get("resolution")
-
-    if not url or not resolution:
-        return jsonify({"error": "Missing parameters"})
 
     progress_data["percentage"] = 0
 
