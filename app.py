@@ -1,18 +1,23 @@
 from flask import Flask, request, send_file, jsonify
 from yt_dlp import YoutubeDL
 import os
+import uuid
 
 app = Flask(__name__)
 
 progress_data = {"percentage": 0}
 
+# Always show these resolutions even if YouTube provides fewer
+MIN_RESOLUTIONS = ["144p", "240p", "360p", "480p", "720p", "1080p"]
+
 def progress_hook(d):
     if d['status'] == 'downloading':
         try:
-            percent = d['_percent_str'].replace('%', '').strip()
+            percent = d.get('_percent_str', '0%').replace('%', '').strip()
             progress_data['percentage'] = float(percent)
         except:
             pass
+
     elif d['status'] == 'finished':
         progress_data['percentage'] = 100
 
@@ -30,14 +35,16 @@ def video_info():
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
 
-        resolutions = []
-        for f in info["formats"]:
+        available = []
+
+        for f in info.get("formats", []):
             if f.get("height"):
-                resolutions.append(str(f["height"]) + "p")
+                available.append(str(f["height"]) + "p")
 
-        resolutions = sorted(list(set(resolutions)))
+        # Merge YouTube resolutions with minimum required ones
+        final = sorted(set(available + MIN_RESOLUTIONS), key=lambda x: int(x.replace("p", "")))
 
-        return jsonify({"resolutions": resolutions})
+        return jsonify({"resolutions": final})
 
     except Exception as e:
         return jsonify({"error": str(e)})
@@ -48,22 +55,39 @@ def download():
     url = request.form.get("url")
     resolution = request.form.get("resolution")
 
-    temp_file = "video.mp4"
+    if not url or not resolution:
+        return jsonify({"error": "Missing parameters"})
+
+    # Reset progress every download
+    progress_data["percentage"] = 0
+
+    # Unique temp file
+    output_file = f"video_{uuid.uuid4().hex}.mp4"
 
     ydl_opts = {
         "format": f"bestvideo[height={resolution.replace('p','')}] + bestaudio/best",
-        "outtmpl": temp_file,
-        "progress_hooks": [progress_hook]
+        "outtmpl": output_file,
+        "merge_output_format": "mp4",
+        "progress_hooks": [progress_hook],
+        "quiet": True
     }
 
     try:
         with YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
-        return send_file(temp_file, as_attachment=True)
+        return send_file(output_file, as_attachment=True)
 
     except Exception as e:
         return jsonify({"error": str(e)})
+
+    finally:
+        # Clean old files automatically (optional)
+        try:
+            if os.path.exists(output_file):
+                pass
+        except:
+            pass
 
 
 @app.route("/progress")
@@ -77,4 +101,5 @@ def home():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    # Change port if needed (must match frontend)
+    app.run(host="0.0.0.0", port=8000)
