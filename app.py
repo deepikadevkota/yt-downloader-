@@ -1,68 +1,80 @@
-from flask import Flask, render_template, request, send_file, jsonify
-from pytubefix import YouTube
+from flask import Flask, request, send_file, jsonify
+from yt_dlp import YoutubeDL
 import os
 
 app = Flask(__name__)
 
-DOWNLOAD_FOLDER = "downloads"
-os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
+progress_data = {"percentage": 0}
 
-progress = {"percentage": 0}
-
-
-def progress_function(stream, chunk, bytes_remaining):
-    total_size = stream.filesize
-    downloaded = total_size - bytes_remaining
-    percent = int((downloaded / total_size) * 100)
-    progress["percentage"] = percent
-
-
-@app.route("/")
-def index():
-    return render_template("index.html")
+def progress_hook(d):
+    if d['status'] == 'downloading':
+        try:
+            percent = d['_percent_str'].replace('%', '').strip()
+            progress_data['percentage'] = float(percent)
+        except:
+            pass
+    elif d['status'] == 'finished':
+        progress_data['percentage'] = 100
 
 
 @app.route("/video_info", methods=["POST"])
 def video_info():
-    url = request.form.get("url")
-    try:
-        yt = YouTube(url)
-        streams = yt.streams.filter(progressive=True, file_extension="mp4").order_by("resolution").desc()
+    url = request.form.get("url", "")
 
-        resolutions = [stream.resolution for stream in streams if stream.resolution]
+    if not url:
+        return jsonify({"error": "URL missing"})
+
+    ydl_opts = {"quiet": True, "skip_download": True}
+
+    try:
+        with YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+
+        resolutions = []
+        for f in info["formats"]:
+            if f.get("height"):
+                resolutions.append(str(f["height"]) + "p")
+
+        resolutions = sorted(list(set(resolutions)))
 
         return jsonify({"resolutions": resolutions})
+
     except Exception as e:
         return jsonify({"error": str(e)})
 
 
 @app.route("/download", methods=["POST"])
-def download_video():
+def download():
     url = request.form.get("url")
     resolution = request.form.get("resolution")
 
+    temp_file = "video.mp4"
+
+    ydl_opts = {
+        "format": f"bestvideo[height={resolution.replace('p','')}] + bestaudio/best",
+        "outtmpl": temp_file,
+        "progress_hooks": [progress_hook]
+    }
+
     try:
-        progress["percentage"] = 0
+        with YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
 
-        yt = YouTube(url, on_progress_callback=progress_function)
-        stream = yt.streams.filter(res=resolution, progressive=True).first()
-
-        if not stream:
-            return "Resolution not available!"
-
-        file_path = stream.download(output_path=DOWNLOAD_FOLDER)
-
-        progress["percentage"] = 100
-        return send_file(file_path, as_attachment=True)
+        return send_file(temp_file, as_attachment=True)
 
     except Exception as e:
-        return f"Error: {str(e)}"
+        return jsonify({"error": str(e)})
 
 
 @app.route("/progress")
-def get_progress():
-    return jsonify(progress)
+def progress():
+    return jsonify(progress_data)
+
+
+@app.route("/")
+def home():
+    return "Backend Running Successfully!"
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=8000)
+    app.run(host="0.0.0.0", port=10000)
