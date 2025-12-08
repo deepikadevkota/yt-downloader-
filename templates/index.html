@@ -1,198 +1,167 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>YouTube Downloader</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Downloader</title>
 
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        transition: 0.4s;
-        background: var(--bg);
-        color: var(--text);
-    }
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0d1117;
+            color: white;
+            text-align: center;
+            padding: 30px;
+        }
 
-    :root {
-        --bg: #ffffff;
-        --text: #000000;
-        --box: #f0f0f0;
-    }
+        .box {
+            background: #161b22;
+            padding: 25px;
+            width: 450px;
+            margin: auto;
+            border-radius: 15px;
+            box-shadow: 0px 0px 20px #000;
+        }
 
-    .dark {
-        --bg: #121212;
-        --text: #ffffff;
-        --box: #2a2a2a;
-    }
+        input, select, button {
+            width: 100%;
+            padding: 12px;
+            margin: 12px 0;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+        }
 
-    .container {
-        width: 520px;        /* Bigger Box */
-        margin: 50px auto;
-        background: var(--box);
-        padding: 35px;       /* More padding */
-        border-radius: 18px;
-        text-align: center;
-        box-shadow: 0px 0px 12px #0002;
-    }
+        button {
+            background: #238636;
+            color: white;
+            cursor: pointer;
+            font-size: 18px;
+        }
 
-    input, select {
-        width: 95%;
-        padding: 12px;
-        margin-top: 16px;
-        border-radius: 8px;
-        border: 1px solid gray;
-        font-size: 15px;
-    }
+        button:disabled {
+            background: gray;
+        }
 
-    button {
-        padding: 12px 25px;
-        background: green;
-        color: white;
-        border: none;
-        border-radius: 10px;
-        margin-top: 25px;
-        cursor: pointer;
-        font-size: 16px;
-    }
+        #progressBar {
+            width: 100%;
+            height: 20px;
+            background: #333;
+            border-radius: 10px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
 
-    .theme-btn {
-        background: purple;
-        float: right;
-        margin: 10px;
-    }
-
-    .progress {
-        width: 95%;
-        background: #ccc;
-        height: 25px;
-        border-radius: 6px;
-        overflow: hidden;
-        margin: 20px auto;
-    }
-
-    .progress-fill {
-        height: 100%;
-        width: 0%;
-        background: green;
-        transition: width 0.2s;
-    }
-
-    #percent {
-        font-size: 18px;
-        margin-top: 10px;
-    }
-</style>
-
+        #progressFill {
+            width: 0%;
+            height: 100%;
+            background: #00ff84;
+            transition: 0.2s;
+        }
+    </style>
 </head>
+
 <body>
 
-<button id="themeBtn" class="theme-btn">Theme</button>
+    <h1>YouTube Video Downloader</h1>
 
-<div class="container">
-    <h2>YouTube Video Downloader</h2>
+    <div class="box">
 
-    <input id="url" type="text" placeholder="Paste YouTube URL">
+        <input type="text" id="url" placeholder="Paste YouTube URL">
 
-    <select id="resolution">
-        <option>Select Resolution</option>
-    </select>
+        <button onclick="getInfo()">Get Available Resolutions</button>
 
-    <div class="progress">
-        <div class="progress-fill" id="progressFill"></div>
+        <select id="resolution">
+            <option selected disabled>-- Select Resolution --</option>
+        </select>
+
+        <button id="downloadBtn" onclick="downloadVideo()" disabled>Download</button>
+
+        <div id="progressBar">
+            <div id="progressFill"></div>
+        </div>
+
     </div>
 
-    <p id="percent">0%</p>
+    <script>
+        const BACKEND = "https://yt-downloader-bx47.onrender.com"; // <-- YOUR BACKEND
 
-    <button onclick="startDownload()">Download</button>
-</div>
+        async function getInfo() {
+            const url = document.getElementById("url").value;
+            if (!url) return alert("Please enter URL");
 
-<script>
+            let form = new FormData();
+            form.append("url", url);
 
-// Theme Toggle
-document.getElementById("themeBtn").onclick = () => {
-    document.body.classList.toggle("dark");
-};
-
-// Load resolutions when URL is entered
-document.getElementById("url").addEventListener("input", () => {
-    let url = document.getElementById("url").value;
-    if (!url.trim()) return;
-
-    fetch("/video_info", {
-        method: "POST",
-        headers: {"Content-Type": "application/x-www-form-urlencoded"},
-        body: "url=" + encodeURIComponent(url)
-    })
-    .then(res => res.json())
-    .then(data => {
-        let r = document.getElementById("resolution");
-        r.innerHTML = "";
-
-        if (data.resolutions && data.resolutions.length > 0) {
-            data.resolutions.forEach(res => {
-                let opt = document.createElement("option");
-                opt.value = res;
-                opt.innerHTML = res;
-                r.appendChild(opt);
+            let res = await fetch(`${BACKEND}/video_info`, {
+                method: "POST",
+                body: form
             });
-        } else {
-            r.innerHTML = "<option>No Resolutions Found</option>";
+
+            let data = await res.json();
+
+            if (data.error) {
+                alert("Error: " + data.error);
+                return;
+            }
+
+            let dropdown = document.getElementById("resolution");
+            dropdown.innerHTML = "";
+
+            data.resolutions.forEach(r => {
+                let opt = document.createElement("option");
+                opt.value = r;
+                opt.textContent = r;
+                dropdown.appendChild(opt);
+            });
+
+            document.getElementById("downloadBtn").disabled = false;
         }
-    })
-    .catch(() => {
-        document.getElementById("resolution").innerHTML = "<option>Error</option>";
-    });
-});
 
 
-// Update Progress
-function updateProgress() {
-    fetch("/progress")
-        .then(res => res.json())
-        .then(data => {
-            let percent = data.percentage || 0;
-            document.getElementById("percent").innerText = percent + "%";
-            document.getElementById("progressFill").style.width = percent + "%";
-        });
-}
+        async function downloadVideo() {
+            const url = document.getElementById("url").value;
+            const res = document.getElementById("resolution").value;
 
-let intervalID;
+            let form = new FormData();
+            form.append("url", url);
+            form.append("resolution", res);
 
-// Start Download
-function startDownload() {
-    let url = document.getElementById("url").value;
-    let res = document.getElementById("resolution").value;
+            let downloading = true;
+            updateProgress();
 
-    if (!url || !res || res === "Select Resolution") {
-        alert("Please paste URL and select resolution!");
-        return;
-    }
+            let response = await fetch(`${BACKEND}/download`, {
+                method: "POST",
+                body: form
+            });
 
-    let form = new FormData();
-    form.append("url", url);
-    form.append("resolution", res);
+            if (!response.ok) {
+                alert("Download failed!");
+                return;
+            }
 
-    intervalID = setInterval(updateProgress, 400);
-
-    fetch("/download", { method: "POST", body: form })
-        .then(res => res.blob())
-        .then(file => {
-            clearInterval(intervalID);
-
+            let blob = await response.blob();
             let a = document.createElement("a");
-            a.href = window.URL.createObjectURL(file);
+            a.href = URL.createObjectURL(blob);
             a.download = "video.mp4";
             a.click();
 
-            document.getElementById("percent").innerText = "0%";
-            document.getElementById("progressFill").style.width = "0%";
-        })
-        .catch(() => {
-            clearInterval(intervalID);
-            alert("Download Failed!");
-        });
-}
+            downloading = false;
+        }
 
-</script>
+        async function updateProgress() {
+            let bar = document.getElementById("progressFill");
+
+            let interval = setInterval(async () => {
+                let res = await fetch(`${BACKEND}/progress`);
+                let data = await res.json();
+
+                bar.style.width = data.percentage + "%";
+
+                if (data.percentage >= 100) clearInterval(interval);
+            }, 500);
+        }
+    </script>
 
 </body>
 </html>
