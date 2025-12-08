@@ -1,91 +1,187 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>YouTube Video Downloader</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f2f2f2;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .container {
-            width: 450px;
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0px 0px 10px gray;
-            text-align: center;
-        }
-        h2 {
-            margin-bottom: 20px;
-        }
-        input, select {
-            width: 90%;
-            padding: 10px;
-            margin-top: 10px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-            border: 1px solid gray;
-            font-size: 15px;
-        }
-        .btn {
-            background: green;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            cursor: pointer;
-            border-radius: 5px;
-            font-size: 18px;
-        }
-        .btn:hover {
-            background: darkgreen;
-        }
-        .progress-bar {
-            width: 90%;
-            height: 20px;
-            background: #ddd;
-            border-radius: 5px;
-            margin: 10px auto;
-        }
-        .progress-fill {
-            height: 100%;
-            width: 0%;
-            background: green;
-            border-radius: 5px;
-        }
-    </style>
+<meta charset="UTF-8">
+<title>YouTube Downloader</title>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        transition: 0.4s;
+        background: var(--bg);
+        color: var(--text);
+    }
+
+    :root {
+        --bg: #ffffff;
+        --text: #000000;
+        --box: #f0f0f0;
+    }
+
+    .dark {
+        --bg: #121212;
+        --text: #ffffff;
+        --box: #2a2a2a;
+    }
+
+    .container {
+        width: 420px;
+        margin: 60px auto;
+        background: var(--box);
+        padding: 25px;
+        border-radius: 10px;
+        text-align: center;
+    }
+
+    input {
+        width: 90%;
+        padding: 10px;
+        margin-top: 12px;
+        border-radius: 6px;
+        border: 1px solid gray;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        background: green;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        margin-top: 20px;
+        cursor: pointer;
+    }
+
+    .theme-btn {
+        background: purple;
+        color: white;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        float: right;
+        margin: 10px;
+    }
+
+    .progress {
+        width: 90%;
+        background: #ccc;
+        height: 20px;
+        border-radius: 6px;
+        overflow: hidden;
+        margin: 15px auto;
+    }
+
+    .progress-fill {
+        height: 100%;
+        width: 0%;
+        background: green;
+        transition: width 0.2s;
+    }
+</style>
+
+<script>
+function toggleTheme() {
+    document.body.classList.toggle("dark");
+}
+
+function startProgress() {
+    let bar = document.getElementById("bar");
+    let text = document.getElementById("percent");
+
+    let interval = setInterval(() => {
+        fetch("/progress")
+            .then(res => res.json())
+            .then(data => {
+                bar.style.width = data.percentage + "%";
+                text.innerText = data.percentage + "%";
+
+                if (data.percentage >= 100) {
+                    clearInterval(interval);
+                }
+            });
+    }, 500);
+}
+</script>
+
 </head>
-
 <body>
-    <div class="container">
-        <h2>YouTube Video Downloader</h2>
 
-        <form action="/" method="POST">
-            <label><b>Enter YouTube Video URL:</b></label><br>
-            <input type="text" name="url" placeholder="Paste URL here" required>
+<button class="theme-btn" onclick="toggleTheme()">Theme</button>
 
-            <label><b>Select Resolution:</b></label><br>
-            <select name="resolution">
-                <option value="1080p">1080p</option>
-                <option value="720p">720p</option>
-                <option value="480p">480p</option>
-                <option value="360p">360p</option>
-                <option value="240p">240p</option>
-                <option value="144p">144p</option>
-            </select>
+<div class="container">
+    <h2>YouTube Video Downloader</h2>
 
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
-            </div>
-            <p id="progressText">0%</p>
+    <input id="url" type="text" placeholder="Paste YouTube URL">
 
-            <button class="btn" type="submit">Download Video</button>
-        </form>
-    </div>
+    <select id="resolution">
+        <option>Loading...</option>
+    </select>
+
+    <div id="progressBar"><div id="progressFill"></div></div>
+    <p id="percent">0%</p>
+
+    <button onclick="startDownload()">Download</button>
+</div>
+
+<script>
+    document.getElementById("themeBtn").onclick = () => {
+        document.body.classList.toggle("dark");
+    };
+
+    document.getElementById("url").addEventListener("change", () => {
+        let url = document.getElementById("url").value;
+        fetch("/video_info", {
+            method: "POST",
+            headers: {"Content-Type": "application/x-www-form-urlencoded"},
+            body: "url=" + url
+        })
+        .then(res => res.json())
+        .then(data => {
+            let r = document.getElementById("resolution");
+            r.innerHTML = "";
+
+            if (data.resolutions) {
+                data.resolutions.forEach(res => {
+                    let opt = document.createElement("option");
+                    opt.value = res;
+                    opt.innerHTML = res;
+                    r.appendChild(opt);
+                });
+            } else {
+                r.innerHTML = "<option>Error</option>";
+            }
+        });
+    });
+
+    function updateProgress() {
+        fetch("/progress")
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById("percent").innerText = data.percentage + "%";
+                document.getElementById("progressFill").style.width = data.percentage + "%";
+            });
+    }
+
+    function startDownload() {
+        let url = document.getElementById("url").value;
+        let res = document.getElementById("resolution").value;
+
+        let form = new FormData();
+        form.append("url", url);
+        form.append("resolution", res);
+
+        setInterval(updateProgress, 500);
+
+        fetch("/download", { method: "POST", body: form })
+            .then(res => res.blob())
+            .then(file => {
+                let a = document.createElement("a");
+                a.href = window.URL.createObjectURL(file);
+                a.download = "video.mp4";
+                a.click();
+            });
+    }
+</script>
+
 </body>
 </html>
