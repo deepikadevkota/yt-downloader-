@@ -1,168 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <title>YouTube Downloader</title>
-
     <style>
         body {
             font-family: Arial, sans-serif;
-            width: 400px;
-            margin: auto;
-            padding: 20px;
-            background: #f7f7f7;
+            background: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
         }
-
         .box {
-            padding: 20px;
-            background: #fff;
+            background: white;
+            padding: 25px;
             border-radius: 10px;
-            box-shadow: 0px 0px 10px #ccc;
+            width: 350px;
+            box-shadow: 0 0 10px #ccc;
+            text-align: center;
         }
-
-        select, input {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-        }
-
-        button {
-            width: 100%;
-            padding: 12px;
-            background: red;
-            color: white;
-            font-size: 18px;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-        }
-
-        #progressBar {
-            width: 100%;
-            height: 18px;
-            background: #ddd;
-            border-radius: 10px;
+        input {
+            width: 90%;
+            padding: 10px;
             margin-top: 10px;
-            overflow: hidden;
         }
-
-        #progressFill {
-            height: 100%;
-            width: 0%;
-            background: green;
-            border-radius: 10px;
-            transition: 0.3s;
+        button {
+            padding: 10px 20px;
+            margin-top: 15px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background: #0056c7;
         }
     </style>
 </head>
-
 <body>
 
-    <h2>YouTube Desktop Downloader</h2>
-
-    <div class="box">
-        <input id="url" type="text" placeholder="Paste YouTube URL here">
-
-        <select id="resolution">
-            <option>-- Select Resolution --</option>
-        </select>
-
-        <button onclick="downloadVideo()">Download</button>
-
-        <div id="progressBar">
-            <div id="progressFill"></div>
-        </div>
-
-        <p id="status"></p>
-    </div>
-
-    <script>
-        const backend = window.location.origin;  // Auto-detect backend URL
-
-        const MIN_RESOLUTIONS = ["144p", "240p", "360p", "480p", "720p", "1080p"];
-
-        document.getElementById("url").addEventListener("input", loadInfo);
-
-        function loadInfo() {
-            let url = document.getElementById("url").value;
-            if (!url) return;
-
-            let form = new FormData();
-            form.append("url", url);
-
-            document.getElementById("status").innerText = "Fetching resolutions...";
-
-            fetch(backend + "/video_info", {
-                method: "POST",
-                body: form
-            })
-                .then(res => res.json())
-                .then(data => {
-                    let sel = document.getElementById("resolution");
-                    sel.innerHTML = "";
-
-                    let finalRes = Array.from(new Set([...MIN_RESOLUTIONS, ...data.resolutions]))
-                        .sort((a, b) => parseInt(a) - parseInt(b));
-
-                    finalRes.forEach(r => {
-                        sel.innerHTML += `<option value="${r}">${r}</option>`;
-                    });
-
-                    document.getElementById("status").innerText = "Resolutions Loaded!";
-                });
-        }
-
-        function downloadVideo() {
-            let url = document.getElementById("url").value;
-            let res = document.getElementById("resolution").value;
-
-            if (!url || !res) {
-                alert("Enter URL and choose resolution");
-                return;
-            }
-
-            let form = new FormData();
-            form.append("url", url);
-            form.append("resolution", res);
-
-            document.getElementById("status").innerText = "Downloading...";
-            updateProgress();
-
-            fetch(backend + "/download", {
-                method: "POST",
-                body: form
-            })
-                .then(response => response.blob())
-                .then(blob => {
-                    let link = document.createElement("a");
-                    link.href = URL.createObjectURL(blob);
-                    link.download = "video.mp4";
-                    link.click();
-
-                    document.getElementById("status").innerText = "Download Completed!";
-                });
-        }
-
-        function updateProgress() {
-            let bar = document.getElementById("progressFill");
-
-            let interval = setInterval(() => {
-                fetch(backend + "/progress")
-                    .then(res => res.json())
-                    .then(data => {
-                        bar.style.width = data.percentage + "%";
-
-                        if (data.percentage >= 100) {
-                            clearInterval(interval);
-                        }
-                    });
-            }, 500);
-        }
-    </script>
+<div class="box">
+    <h2>YouTube Video Downloader</h2>
+    <form action="/" method="POST">
+        <input type="text" name="url" placeholder="Enter YouTube URL" required>
+        <br>
+        <button type="submit">Download</button>
+    </form>
+</div>
 
 </body>
-
 </html>
