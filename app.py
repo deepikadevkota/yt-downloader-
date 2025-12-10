@@ -1,90 +1,31 @@
-from flask import Flask, request, send_file, jsonify, render_template
-from yt_dlp import YoutubeDL
+from flask import Flask, render_template, request, send_file
+from pytube import YouTube
 import os
-import uuid
 
 app = Flask(__name__)
 
-progress_data = {"percentage": 0}
-
-# Always show these resolutions even if YouTube provides fewer
-MIN_RESOLUTIONS = ["144p", "240p", "360p", "480p", "720p", "1080p"]
-
-def progress_hook(d):
-    if d['status'] == 'downloading':
+@app.route("/", methods=["GET", "POST"])
+def index():
+    if request.method == "POST":
+        video_url = request.form["url"]
         try:
-            percent = d.get('_percent_str', '0%').replace('%', '').strip()
-            progress_data['percentage'] = float(percent)
-        except:
-            pass
+            yt = YouTube(video_url)
+            stream = yt.streams.get_highest_resolution()
 
-    elif d['status'] == 'finished':
-        progress_data['percentage'] = 100
+            # File download path
+            download_path = "downloads"
+            if not os.path.exists(download_path):
+                os.makedirs(download_path)
 
+            file_path = stream.download(download_path)
 
-@app.route("/")
-def home():
-    return render_template("index.html")   # <-- FIXED
+            return send_file(file_path, as_attachment=True)
 
+        except Exception as e:
+            return f"Error: {str(e)}"
 
-@app.route("/video_info", methods=["POST"])
-def video_info():
-    url = request.form.get("url", "")
-
-    if not url:
-        return jsonify({"error": "URL missing"})
-
-    try:
-        ydl_opts = {"quiet": True, "skip_download": True}
-        with YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-
-        available = []
-        for f in info.get("formats", []):
-            if f.get("height"):
-                available.append(str(f["height"]) + "p")
-
-        final = sorted(set(available + MIN_RESOLUTIONS), key=lambda x: int(x.replace("p", "")))
-
-        return jsonify({"resolutions": final})
-
-    except Exception as e:
-        return jsonify({"error": str(e)})
-
-
-@app.route("/download", methods=["POST"])
-def download():
-    url = request.form.get("url")
-    resolution = request.form.get("resolution")
-
-    if not url or not resolution:
-        return jsonify({"error": "Missing parameters"})
-
-    progress_data["percentage"] = 0
-    output_file = f"video_{uuid.uuid4().hex}.mp4"
-
-    ydl_opts = {
-        "format": f"bestvideo[height={resolution.replace('p','')}] + bestaudio/best",
-        "outtmpl": output_file,
-        "merge_output_format": "mp4",
-        "progress_hooks": [progress_hook],
-        "quiet": True
-    }
-
-    try:
-        with YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-
-        return send_file(output_file, as_attachment=True)
-
-    except Exception as e:
-        return jsonify({"error": str(e)})
-
-
-@app.route("/progress")
-def progress():
-    return jsonify(progress_data)
+    return render_template("index.html")
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+    app.run(debug=True)
