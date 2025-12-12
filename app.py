@@ -1,97 +1,66 @@
-from flask import Flask, render_template, request, jsonify, send_file
-from yt_dlp import YoutubeDL
+from flask import Flask, render_template, request, send_file, jsonify
+from pytubefix import YouTube
 import os
-import threading
 
 app = Flask(__name__)
 
-DOWNLOAD_PROGRESS = {"percent": 0}
+DOWNLOAD_FOLDER = "downloads"
+os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
-# ---------- PROGRESS HOOK ----------
-def progress_hook(d):
-    if d['status'] == 'downloading':
-        try:
-            percent = d.get('_percent_str', "0%").replace("%", "")
-            DOWNLOAD_PROGRESS["percent"] = float(percent)
-        except:
-            pass
-    elif d['status'] == 'finished':
-        DOWNLOAD_PROGRESS["percent"] = 100
+progress = {"percentage": 0}
 
 
-# ---------- HOME PAGE ----------
+def progress_function(stream, chunk, bytes_remaining):
+    total_size = stream.filesize
+    bytes_downloaded = total_size - bytes_remaining
+    percent = int((bytes_downloaded / total_size) * 100)
+    progress["percentage"] = percent
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
 
 
-# ---------- FETCH AVAILABLE RESOLUTIONS ----------
-@app.route("/get_formats", methods=["POST"])
-def get_formats():
-    url = request.json.get("url")
-
-    ydl_opts = {"quiet": True, "skip_download": True}
-
-    try:
-        with YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-
-        formats = []
-        for f in info.get("formats", []):
-            if f.get("height"):
-                formats.append({
-                    "format_id": f["format_id"],
-                    "resolution": f"{f['height']}p",
-                    "ext": f["ext"]
-                })
-
-        return jsonify({"formats": formats})
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
-
-
-# ---------- DOWNLOAD VIDEO ----------
 @app.route("/download", methods=["POST"])
 def download_video():
-    data = request.json
-    url = data["url"]
-    format_id = data["format_id"]
-    folder = data["folder"]
-
-    if not os.path.isdir(folder):
-        return jsonify({"error": "Invalid folder path"}), 400
-
-    DOWNLOAD_PROGRESS["percent"] = 0
-
-    output_template = os.path.join(folder, "%(title)s.%(ext)s")
-
-    ydl_opts = {
-        "quiet": True,
-        "format": format_id,
-        "progress_hooks": [progress_hook],
-        "outtmpl": output_template
-    }
+    url = request.form.get("url")
+    resolution = request.form.get("resolution")
 
     try:
-        def run_download():
-            with YoutubeDL(ydl_opts) as ydl:
-                ydl.download([url])
+        progress["percentage"] = 0
 
-        t = threading.Thread(target=run_download)
-        t.start()
+        yt = YouTube(url, on_progress_callback=progress_function)
 
-        return jsonify({"message": "Download started"})
+        # Resolution Selector
+        if resolution == "1080p":
+            stream = yt.streams.filter(res="1080p", progressive=True).first()
+        elif resolution == "720p":
+            stream = yt.streams.filter(res="720p", progressive=True).first()
+        elif resolution == "480p":
+            stream = yt.streams.filter(res="480p", progressive=True).first()
+        elif resolution == "360p":
+            stream = yt.streams.filter(res="360p", progressive=True).first()
+        else:
+            stream = yt.streams.get_highest_resolution()
+
+        if not stream:
+            return f"Selected resolution {resolution} not available."
+
+        file_path = stream.download(output_path=DOWNLOAD_FOLDER)
+
+        progress["percentage"] = 100
+
+        return send_file(file_path, as_attachment=True)
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return f"Error: {str(e)}"
 
 
-# ---------- PROGRESS API ----------
 @app.route("/progress")
-def progress():
-    return jsonify(DOWNLOAD_PROGRESS)
+def get_progress():
+    return jsonify(progress)
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=8000)
