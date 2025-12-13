@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YouTube Downloader</title>
+    <style>
+        body { font-family: Arial; background:#fff; }
+        .box { width:400px; margin:100px auto; text-align:center; border:1px solid #ccc; padding:30px; border-radius:10px; }
+
+        input, select { width:100%; padding:10px; margin:10px 0; }
+        button { padding:10px 30px; background:green; color:white; border:none; cursor:pointer; }
+
+        .progress {
+            width:100%;
+            background:#ddd;
+            height:20px;
+            border-radius:5px;
+            margin-top:20px;
+            display:none;
+        }
+
+        .bar {
+            height:100%;
+            width:0%;
+            background:green;
+            color:white;
+            font-size:12px;
+            border-radius:5px;
+        }
+    </style>
+</head>
+
+<body>
+<div class="box">
+    <h2>YouTube Downloader</h2>
+
+    <input id="url" placeholder="Enter YouTube URL">
+    <select id="quality">
+        <option value="360">360p</option>
+        <option value="720">720p</option>
+        <option value="1080">1080p</option>
+    </select>
+
+    <button onclick="startDownload()">Download</button>
+
+    <div class="progress" id="progressBox">
+        <div class="bar" id="bar">0%</div>
+    </div>
+
+    <p id="msg"></p>
+</div>
+
+<script>
+function startDownload() {
+    document.getElementById("progressBox").style.display = "block";
+    document.getElementById("msg").innerHTML = "";
+
+    fetch("/download", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+            url: document.getElementById("url").value,
+            quality: document.getElementById("quality").value
+        })
+    });
+
+    let interval = setInterval(() => {
+        fetch("/progress")
+        .then(res => res.json())
+        .then(data => {
+            let bar = document.getElementById("bar");
+            bar.style.width = data.percent + "%";
+            bar.innerHTML = data.percent + "%";
+
+            if (data.status === "finished") {
+                clearInterval(interval);
+                document.getElementById("msg").innerHTML = "✅ Download Complete!";
+            }
+        });
+    }, 500);
+}
+</script>
+</body>
+</html>
